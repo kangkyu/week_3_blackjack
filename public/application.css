@@ -1,0 +1,9 @@
+ul.thumbnails {
+
+  height: 180px;
+}
+
+img.thumbnail {
+
+  max-height: 100%;
+}
