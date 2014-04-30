@@ -6,19 +6,25 @@ set :sessions, true
 helpers do
   def count_points(cards)
     # total = count_points(session[:player_hand])
+
+    arr = cards.map{|e| e[1] }
+
     total = 0
-    arr = cards.collect{|e| e[1]}
-    arr.each do |v|
-      if v == 'A'
+    arr.each do |value|
+      if value == "A"
         total += 11
+      elsif value.to_i == 0 # J, Q, K
+        total += 10
       else
-        total += v.to_i == 0 ? 10 : v.to_i
+        total += value.to_i
       end
     end
-    arr.select{|e| e=='A'}.count.times do
-      break if total <= 21
-      total -= 10
+
+    #correct for Aces
+    arr.select{|e| e == "A"}.count.times do
+      total -= 10 if total > 21
     end
+
     total
   end
 
@@ -55,30 +61,78 @@ end
 
 get '/' do
   if session[:user_name]
-    redirect '/game' 
+    redirect '/welcome' 
   else
     redirect '/new_user'
   end
 end
 
-get '/game' do
-  session[:deck] = ['D','S','H','C'].product(['2','3','4','5','6','7','8','9','10','A','Q','K','J']).shuffle!
-  session[:player_hand] = []
-  session[:dealer_hand] = []
-  session[:dealer_hand] << session[:deck].pop
-  session[:player_hand] << session[:deck].pop
-  session[:dealer_hand] << session[:deck].pop
-  session[:player_hand] << session[:deck].pop
-
-  if count_points(session[:player_hand]) == 21
-      @success = "#{session[:user_name]} won Black Jack!"
-      @show_hit_button = false
-  end
-  erb :game
+get '/leave' do
+  session.clear
+  redirect '/'
 end
 
+get '/welcome' do
+  @success = "Hello #{session[:user_name]}"
+  session[:player_balance] ||= 500
+  session[:balance_rate] = (session[:player_balance] / 5)
+
+  erb :welcome
+end
+
+post '/welcome' do
+  if params[:bet_much].to_i < 5
+    @error = "a player has to bet minimum or more."
+    halt erb(:welcome)
+  end
+  session[:bet_much] = params[:bet_much].to_i
+  if session[:bet_much] > session[:player_balance]
+    @error = "bet no more than player's balance"
+    halt erb(:welcome)
+  end
+
+  redirect '/game'
+end
+
+get '/new_user' do
+  @show_navbar = false
+  erb :new_user
+end
+
+post '/new_user' do
+  if params[:user_name].empty?
+    @error = "name is required"
+    @show_navbar = false
+    halt erb(:new_user)
+  end
+  session[:user_name] = params[:user_name].capitalize
+
+  redirect '/welcome'
+end
+
+get '/game' do
+  session[:deck] = ['D','S','H','C'].product(['2','3','4','5','6','7','8','9','10','A','Q','K','J']).shuffle!
+  
+  session[:player_hand] = []
+  session[:dealer_hand] = []
+
+  session[:player_hand] << session[:deck].pop
+  session[:dealer_hand] << session[:deck].pop
+  session[:player_hand] << session[:deck].pop
+  session[:dealer_hand] << session[:deck].pop
+
+
+  if count_points(session[:player_hand]) == 21
+    redirect '/conclude'
+    break
+  end
+
+  @player_turn = true
+  erb :game 
+end
+
+
 post '/game' do
-  "Hello World - post game page"
   if params[:hit_or_stay] == 'hit'
     redirect '/hit'
   else
@@ -86,39 +140,83 @@ post '/game' do
   end
 end
 
-get '/hit' do
-  session[:player_hand] << session[:deck].pop
+post '/new_round' do
+  if params[:new_round] == 'continue'
+    redirect '/welcome'
+  else
+    redirect '/leave'
+  end
+end
 
-  if count_points(session[:player_hand]) >= 21
-    if count_points(session[:player_hand]) == 21
-      @success = "#{session[:user_name]} won Black Jack!"
-    else # if player_points > 21
-      @error = "Sorry but #{session[:user_name]} got Busted!"
-    end
-    @show_hit_button = false
+get '/hit' do
+  @player_turn = true
+  session[:player_hand] << session[:deck].pop
+  if count_points(session[:player_hand]) > 21
+    # player busts
+    redirect '/conclude'
+  else
+    # still playing, re-render the screen
+    erb :game
   end
 
-  erb :game #re-render the screen
 end
   
 get '/stay' do
-  # @show_hit_button = false
   # dealer's turn
-
-  erb :game
+  redirect '/dealer' 
 end
 
-get '/new_user' do
-  "this is new user"
-  erb :new_user
+get '/dealer' do
+  while count_points(session[:dealer_hand]) < 17
+    # dealer hit
+    session[:dealer_hand] << session[:deck].pop
+    if count_points(session[:dealer_hand]) > 21
+      # dealer busts
+      redirect '/conclude'
+      break
+    end  
+  end
+  # round ends
+  redirect '/conclude'
 end
 
-post '/new_user' do
-  session[:user_name] = params[:user_name].capitalize
+get '/conclude' do
+  player_total = count_points(session[:player_hand])
+  dealer_total = count_points(session[:dealer_hand])
 
-  redirect '/game'
+  if player_total == 21 && session[:player_hand].count == 2
+    @alert = "#{session[:user_name]} won Black Jack!"
+    @player_turn = true
+    @win_much = session[:bet_much] * 2
+  elsif player_total > 21
+    @alert = "#{session[:user_name]} Busts"
+    @player_turn = true
+    @win_much = session[:bet_much] * -1
+  elsif dealer_total > 21
+    @alert = "Dealer Busts"
+    @win_much = session[:bet_much] * 1
+  else # compare stay values
+    if player_total > dealer_total
+      @alert = "Dealer Stay - #{session[:user_name]} Won"
+      @win_much = session[:bet_much] * 1
+    elsif player_total < dealer_total
+      if dealer_total == 21
+        @alert = "Dealer Black Jack - #{session[:user_name]} Lost"
+      else
+        @alert = "Dealer Stay - #{session[:user_name]} Lost"
+      end
+        @win_much = session[:bet_much] * -1
+    else
+      @alert = "Dealer Stay - Round Push."
+      @win_much = 0
+    end
+  end
+  session[:player_balance] += (@win_much)
+
+  erb :conclude
 end
 
 before do
-  @show_hit_button = true
+  @show_navbar = true
+  @player_turn = false
 end

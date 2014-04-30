@@ -1,9 +1,14 @@
 ul.thumbnails {
 
-  height: 180px;
+  height: 160px;
 }
 
 img.thumbnail {
 
   max-height: 100%;
+}
+
+.btn-large {
+
+  margin-left: 10px;
 }

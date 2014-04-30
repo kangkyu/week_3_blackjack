@@ -1,0 +1,21 @@
+<!-- welcome.erb -->
+
+<form action="/welcome" method="POST">
+  <p>Please input your bet (min: 5):</p>
+  <input type="text" name="bet_much" value="100" /><br /> 
+  <p><%= session[:user_name] %>'s balance <%= session[:player_balance] %>.</p> 
+  <input type="submit" class="btn" value="game start" />
+</form> 
+
+<div class="progress">
+  <% if session[:balance_rate] >= 100 %>
+    <div class="bar bar-success" style="width: <%= session[:balance_rate]/3 %>%;"></div>
+  <% elsif session[:balance_rate] > 50 %>
+    <div class="bar bar" style="width: <%= session[:balance_rate]/3 %>%;"></div>  
+   <% elsif session[:balance_rate] > 10 %>
+    <div class="bar bar-warning" style="width: <%= session[:balance_rate]/3 %>%;"></div>
+  <% else %>
+    <div class="bar bar-danger" style="width: <%= session[:balance_rate]/3 %>%;"></div>
+  <% end %>
+</div>
+
