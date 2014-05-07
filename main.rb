@@ -4,6 +4,37 @@ require 'sinatra'
 set :sessions, true
 
 helpers do
+  def conclusion(player_total, dealer_total)
+    if player_total == 21 && session[:player_hand].count == 2
+      @alert = "#{session[:user_name]} won Black Jack!"
+      @player_turn = true
+      @win_much = session[:bet_much] * 2
+    elsif player_total > 21
+      @alert = "#{session[:user_name]} Busts"
+      @player_turn = true
+      @win_much = session[:bet_much] * -1
+    elsif dealer_total > 21
+      @alert = "Dealer Busts"
+      @win_much = session[:bet_much] * 1
+    else # compare stay values
+      if player_total > dealer_total
+        @alert = "Dealer Stay - #{session[:user_name]} Won"
+        @win_much = session[:bet_much] * 1
+      elsif player_total < dealer_total
+        if dealer_total == 21
+          @alert = "Dealer Black Jack - #{session[:user_name]} Lost"
+        else
+          @alert = "Dealer Stay - #{session[:user_name]} Lost"
+        end
+          @win_much = session[:bet_much] * -1
+      else
+        @alert = "Dealer Stay - Round Push."
+        @win_much = 0
+      end
+    end
+    session[:player_balance] += (@win_much)
+  end
+
   def count_points(cards)
     # total = count_points(session[:player_hand])
 
@@ -37,25 +68,26 @@ helpers do
   end
 
   def display(suit_or_rank)
-    case suit_or_rank
-      when 'D' then "Diamonds" 
-      when 'C' then "Clubs"
-      when 'H' then "Hearts"
-      when 'S' then "Spades"
-      when '2' then "Two"
-      when '3' then "Three"
-      when '4' then "Four"
-      when '5' then "Five"
-      when '6' then "Six"
-      when '7' then "Seven"
-      when '8' then "Eight"
-      when '9' then "Nine"
-      when '10' then "Ten"
-      when 'J' then "Jack"
-      when 'K' then "King"
-      when 'Q' then "Queen"
-      when 'A' then "Ace"
-    end 
+    word_hsh = {"H"=>"Hearts", "D"=>"Diamonds", "C"=>"Clubs", "S"=>"Spades", "2"=>"Two", "3"=>"Three", "4"=>"Four", "5"=>"Five", "6"=>"Six", "7"=>"Seven", "8"=>"Eight", "9"=>"Nine", "10"=>"Ten", "A"=>"Ace", "Q"=>"Queen", "K"=>"King", "J"=>"Jack"}
+    word_hsh[suit_or_rank]
+  end
+
+  def bet_validation(bet)
+    if bet.to_i < 5
+      @error = "a player has to bet minimum 5 or more."
+      halt erb(:welcome)
+    elsif bet.to_i > session[:player_balance]
+      @error = "betting no more than player's balance."
+      halt erb(:welcome)
+    end
+  end
+
+  def name_validation(name)
+    if name.empty?
+      @error = "a player_name is required"
+      @show_navbar = false
+      halt erb(:new_user)
+    end
   end
 end
 
@@ -76,21 +108,12 @@ get '/welcome' do
   @success = "Hello #{session[:user_name]}"
   session[:player_balance] ||= 500
   session[:balance_rate] = (session[:player_balance] / 5)
-
   erb :welcome
 end
 
 post '/welcome' do
-  if params[:bet_much].to_i < 5
-    @error = "a player has to bet minimum or more."
-    halt erb(:welcome)
-  end
+  bet_validation(params[:bet_much])
   session[:bet_much] = params[:bet_much].to_i
-  if session[:bet_much] > session[:player_balance]
-    @error = "bet no more than player's balance"
-    halt erb(:welcome)
-  end
-
   redirect '/game'
 end
 
@@ -100,27 +123,19 @@ get '/new_user' do
 end
 
 post '/new_user' do
-  if params[:user_name].empty?
-    @error = "name is required"
-    @show_navbar = false
-    halt erb(:new_user)
-  end
+  name_validation(params[:user_name])
   session[:user_name] = params[:user_name].capitalize
-
   redirect '/welcome'
 end
 
 get '/game' do
   session[:deck] = ['D','S','H','C'].product(['2','3','4','5','6','7','8','9','10','A','Q','K','J']).shuffle!
-  
   session[:player_hand] = []
   session[:dealer_hand] = []
-
   session[:player_hand] << session[:deck].pop
   session[:dealer_hand] << session[:deck].pop
   session[:player_hand] << session[:deck].pop
   session[:dealer_hand] << session[:deck].pop
-
 
   if count_points(session[:player_hand]) == 21
     redirect '/conclude'
@@ -130,7 +145,6 @@ get '/game' do
   @player_turn = true
   erb :game 
 end
-
 
 post '/game' do
   if params[:hit_or_stay] == 'hit'
@@ -181,39 +195,9 @@ get '/dealer' do
 end
 
 get '/conclude' do
-  player_total = count_points(session[:player_hand])
-  dealer_total = count_points(session[:dealer_hand])
-
-  if player_total == 21 && session[:player_hand].count == 2
-    @alert = "#{session[:user_name]} won Black Jack!"
-    @player_turn = true
-    @win_much = session[:bet_much] * 2
-  elsif player_total > 21
-    @alert = "#{session[:user_name]} Busts"
-    @player_turn = true
-    @win_much = session[:bet_much] * -1
-  elsif dealer_total > 21
-    @alert = "Dealer Busts"
-    @win_much = session[:bet_much] * 1
-  else # compare stay values
-    if player_total > dealer_total
-      @alert = "Dealer Stay - #{session[:user_name]} Won"
-      @win_much = session[:bet_much] * 1
-    elsif player_total < dealer_total
-      if dealer_total == 21
-        @alert = "Dealer Black Jack - #{session[:user_name]} Lost"
-      else
-        @alert = "Dealer Stay - #{session[:user_name]} Lost"
-      end
-        @win_much = session[:bet_much] * -1
-    else
-      @alert = "Dealer Stay - Round Push."
-      @win_much = 0
-    end
-  end
-  session[:player_balance] += (@win_much)
-
-  erb :conclude
+  # conclusion(player_total, dealer_total)  
+  conclusion(count_points(session[:player_hand]), count_points(session[:dealer_hand]))
+  halt erb (:conclude)
 end
 
 before do
