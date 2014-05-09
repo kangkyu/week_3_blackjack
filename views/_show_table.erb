@@ -15,11 +15,6 @@
     <% end %>    
   </ul>
 </div>
-<% if !@player_turn %>
-  <p><%= count_points(session[:dealer_hand]) %></p>
-<% else %>
-  <p>?</p>
-<% end %>
 
 <h4>player's hand</h4>
 
@@ -32,4 +27,3 @@
     <% end %>
   </ul>
 </div>
-<p><%= count_points(session[:player_hand]) %></p>
