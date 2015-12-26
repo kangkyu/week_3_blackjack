@@ -7,12 +7,12 @@
 
 <form action="/new_round" method="POST">
   <div class="btn-group">
-    <% if session[:conclude_balance] > 0 %> 
+    <% if session[:conclude_balance] > 0 %>
     <button type="submit" name="new_round" value="continue" class="btn" ><strong>continue</strong></button>
     <% end %>
     <button type="submit" name="new_round" value="leave" class="btn btn-inverse">leave</button>
   </div>
-</form> 
+</form>
 
 <h4>Player now has <%= session[:conclude_balance] %></h4>
 <p><% if @win_much > 0 %>Win<% elsif @win_much <0 %>Lose<% end %> <%= @win_much %></p>

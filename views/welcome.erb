@@ -10,7 +10,7 @@
     <div class="bar bar-success" style="width: <%= session[:player_balance]/20 %>%;"></div>
   <% elsif session[:player_balance]/5 > 90 %>
     <div class="bar bar" style="width: <%= session[:player_balance]/20 %>%;"></div>
-   <% elsif session[:player_balance]/5 > 60 %>
+  <% elsif session[:player_balance]/5 > 60 %>
     <div class="bar bar-warning" style="width: <%= session[:player_balance]/20 %>%;"></div>
   <% else %>
     <div class="bar bar-danger" style="width: <%= session[:player_balance]/20 %>%;"></div>

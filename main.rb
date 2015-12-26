@@ -27,7 +27,7 @@ helpers do
 
     arr = cards.map{|e| e[1] }
     total = 0
-    
+
     arr.each do |value|
       if value == "A"
         total += 11
@@ -61,7 +61,7 @@ helpers do
 
   def blackjack?(cards)
     count_points(cards) == 21 && cards.count == 2
-  end 
+  end
 
   def busted?(cards)
     count_points(cards) > 21
@@ -112,7 +112,7 @@ end
 
 get '/' do
   if session[:user_name]
-    redirect '/welcome' 
+    redirect '/welcome'
   else
     redirect '/new_user'
   end
@@ -155,14 +155,14 @@ get '/game' do
     redirect '/dealer'
   else
     @player_turn = true
-    erb :game 
+    erb :game
   end
 end
 
 post '/game' do
   if params[:hit_or_stay] == 'hit'
     redirect '/hit'
-  else 
+  else
     redirect '/dealer' # player stay
   end
 end
@@ -195,7 +195,7 @@ get '/dealer' do
         if busted?(session[:dealer_hand])
           session[:closing] = 'dealer_busted'
           redirect '/conclude'
-        end  
+        end
       end
       session[:closing] = 'must_compare' # dealer stay
     end
